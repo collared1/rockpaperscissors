@@ -1,0 +1,564 @@
+```html name=index.html url=https://github.com/collared1/rockpaperscissors/blob/73072fe952f482485281c0b0680e68dd635227c0/index.html
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Rock Paper Scissors — Battle Royale</title>
+
+<!-- Optional: modern system font stack -->
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --bg-1: #0f1724;
+    --bg-2: #071028;
+    --card: rgba(255,255,255,0.04);
+    --muted: #9aa7b6;
+    --accent: #4fd1c5;
+    --danger: #ff6b6b;
+    --glass: rgba(255,255,255,0.03);
+    --glass-2: rgba(255,255,255,0.02);
+    --shadow: 0 8px 30px rgba(2,6,23,0.7);
+  }
+
+  /* page */
+  html,body{
+    height:100%;
+    margin:0;
+    background: radial-gradient(1200px 600px at 10% 10%, rgba(79,209,197,0.06), transparent 6%),
+                linear-gradient(180deg,var(--bg-1),var(--bg-2));
+    color:#e6eef6;
+    font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    -webkit-font-smoothing:antialiased;
+    -moz-osx-font-smoothing:grayscale;
+    padding:28px;
+    box-sizing:border-box;
+  }
+
+  .wrap{
+    max-width:1200px;
+    margin:0 auto;
+    display:grid;
+    grid-template-columns: 1fr 360px;
+    gap:20px;
+    align-items:start;
+  }
+
+  header{
+    grid-column: 1 / -1;
+    display:flex;
+    align-items:center;
+    gap:16px;
+    margin-bottom:6px;
+  }
+
+  h1{
+    margin:0;
+    font-weight:700;
+    letter-spacing:-0.5px;
+    font-size:20px;
+  }
+  p.lead{
+    margin:0;
+    color:var(--muted);
+    font-size:13px;
+  }
+
+  /* main card */
+  .main{
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), var(--glass));
+    border-radius:12px;
+    padding:14px;
+    box-shadow:var(--shadow);
+    border:1px solid rgba(255,255,255,0.03);
+  }
+
+  canvas{
+    display:block;
+    width:100%;
+    height:600px;
+    border-radius:10px;
+    background: linear-gradient(180deg, #000, #02060a);
+    box-shadow: 0 6px 24px rgba(2,8,20,0.6), inset 0 -30px 80px rgba(0,0,0,0.4);
+    border:1px solid rgba(255,255,255,0.04);
+    margin-bottom:12px;
+  }
+
+  /* controls / sidebar */
+  aside{
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+    align-items:stretch;
+  }
+
+  .card{
+    background:var(--card);
+    border-radius:10px;
+    padding:12px;
+    border:1px solid var(--glass-2);
+    box-shadow: 0 4px 18px rgba(2,8,20,0.5);
+  }
+
+  .controls{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap:10px;
+    align-items:center;
+    margin-bottom:6px;
+  }
+
+  label{ font-size:12px; color:var(--muted); display:block; margin-bottom:6px; }
+  input[type="number"], input[type="range"]{
+    width:100%;
+    background:transparent;
+    color:inherit;
+  }
+
+  .row{
+    display:flex;
+    gap:8px;
+    align-items:center;
+  }
+
+  .big{
+    font-size:18px;
+    font-weight:600;
+    color:#fff;
+  }
+
+  .buttons{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+
+  button{
+    appearance:none;
+    border:0;
+    padding:8px 12px;
+    border-radius:8px;
+    cursor:pointer;
+    font-weight:600;
+    color:#061018;
+    background:linear-gradient(180deg,var(--accent),#2bb9a6);
+    box-shadow: 0 6px 18px rgba(45, 163, 146, 0.12), inset 0 -2px 0 rgba(0,0,0,0.06);
+  }
+  button.secondary{
+    background:transparent;
+    color:var(--muted);
+    border:1px solid rgba(255,255,255,0.03);
+    box-shadow:none;
+  }
+
+  #status{
+    margin:8px 0 0 0;
+    color:var(--muted);
+    font-size:13px;
+  }
+
+  /* chat + leaderboard */
+  #chat, #leaderboard{
+    background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.00));
+    border-radius:8px;
+    padding:10px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", "Courier New", monospace;
+    font-size:13px;
+    color:#e6eef6;
+  }
+
+  #chat{
+    height:300px;
+    overflow:auto;
+    border:1px solid rgba(255,255,255,0.03);
+  }
+
+  #leaderboard{
+    white-space:pre;
+    font-size:13px;
+    margin-top:8px;
+    border:1px solid rgba(255,255,255,0.03);
+  }
+
+  .chat-line{
+    padding:6px 4px;
+    border-bottom:1px dashed rgba(255,255,255,0.02);
+    font-size:13px;
+  }
+
+  .name{
+    font-weight:700;
+    margin-right:6px;
+    display:inline-block;
+  }
+
+  /* small helpers */
+  .muted { color:var(--muted); font-size:12px; }
+  .legend{ display:flex; gap:8px; align-items:center; justify-content:flex-start; margin-top:8px; flex-wrap:wrap; }
+  .badge{ padding:6px 8px; border-radius:999px; font-weight:700; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.02); font-size:13px; }
+
+  /* responsive */
+  @media (max-width:1000px){
+    .wrap{ grid-template-columns: 1fr; }
+    canvas{ height:420px; }
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>Rock Paper Scissors — Battle Royale</h1>
+        <p class="lead">Fast little simulation where players spawn, chase their prey and fight until only one type remains.</p>
+      </div>
+      <div style="margin-left:auto; text-align:right;">
+        <div class="muted">autorun / simulated arena</div>
+        <div class="legend">
+          <div class="badge">🪨 Rock</div>
+          <div class="badge">📄 Paper</div>
+          <div class="badge">✂️ Scissors</div>
+        </div>
+      </div>
+    </header>
+
+    <main class="main">
+      <!-- Canvas (keeps same id so JS still works) -->
+      <canvas id="c" width="900" height="600"></canvas>
+
+      <div style="display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap;">
+        <div class="controls" style="flex:1;">
+          <div>
+            <label>People</label>
+            <input id="people" type="number" min="1" max="500" value="50">
+          </div>
+          <div>
+            <label>Round</label>
+            <div class="big" id="roundLabel">1</div>
+          </div>
+
+          <div>
+            <label>Rock %</label>
+            <input id="rock" type="number" min="0" max="100" value="34">
+          </div>
+          <div>
+            <label>Paper %</label>
+            <input id="paper" type="number" min="0" max="100" value="33">
+          </div>
+          <div>
+            <label>Scissors %</label>
+            <input id="scissors" type="number" min="0" max="100" value="33">
+          </div>
+          <div style="grid-column:1 / -1;">
+            <div class="muted">Tip: numbers should add to ~100 (they are normalized by chance) — adjust to experiment with different mixes.</div>
+          </div>
+        </div>
+
+        <div style="min-width:200px;">
+          <div class="buttons">
+            <button id="runBtn">Run</button>
+            <button id="nextBtn" hidden class="secondary">Next Round</button>
+            <button id="runAgainBtn" hidden class="secondary">Run Again</button>
+          </div>
+          <div id="status" class="muted">Ready</div>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:12px; margin-top:12px; align-items:flex-start;">
+        <div class="card" style="flex:1;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <strong>Live Chat</strong>
+            <span class="muted" id="chatCount">0 messages</span>
+          </div>
+          <div id="chat" class="chat" aria-live="polite"></div>
+        </div>
+
+        <div style="width:220px;">
+          <div class="card">
+            <strong>Leaderboard</strong>
+            <div id="leaderboard" style="margin-top:8px">Kills\n-----\n</div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <aside>
+      <div class="card">
+        <strong>About</strong>
+        <p class="muted" style="margin:6px 0 0;">This is a playful visual tweak of the original demo. Players spawn and chase the type they beat. You can adjust populations, run rounds and continue survivors into the next round.</p>
+      </div>
+
+      <div class="card">
+        <strong>Controls</strong>
+        <p class="muted" style="margin:6px 0 0;">Use <kbd>Run</kbd> to start. When a round ends, use <kbd>Next Round</kbd> to continue survivors.</p>
+      </div>
+    </aside>
+  </div>
+
+<script>
+/* ---------- DOM ---------- */
+const canvas = document.getElementById("c");
+const ctx = canvas.getContext("2d");
+const chat = document.getElementById("chat");
+const leaderboard = document.getElementById("leaderboard");
+const statusEl = document.getElementById("status");
+const roundLabel = document.getElementById("roundLabel");
+const chatCount = document.getElementById("chatCount");
+
+const peopleInput = document.getElementById("people");
+const rockInput = document.getElementById("rock");
+const paperInput = document.getElementById("paper");
+const scissorsInput = document.getElementById("scissors");
+
+const runBtn = document.getElementById("runBtn");
+const nextBtn = document.getElementById("nextBtn");
+const runAgainBtn = document.getElementById("runAgainBtn");
+
+/* ---------- CONSTANTS ---------- */
+const EMOJI = { rock:"🪨", paper:"📄", scissors:"✂️" };
+const KILLS = { rock:"scissors", scissors:"paper", paper:"rock" };
+
+const TRASH = [
+"EZ","TOO SLOW","FREE","SKILL ISSUE","OUTPLAYED",
+"READ YOU","GG","WHO NEXT","PANIC","MISPLAY",
+"NOT EVEN CLOSE","CLIPPED","PATHETIC","CALCULATED",
+"UNLUCKY","WELCOME","COOKED","OUTDATED META",
+"SPEEDRUN","DIFF","BRO WHY","OVERESTIMATED",
+"ALL PART OF PLAN","BAD MATCHUP","TOO PREDICTABLE"
+];
+
+const CHEERS = [
+"YOU GOT THIS","SWEEP THEM","DEATH TO THE OTHERS! GLORY TO",
+"FOREVER","W","WIN THIS",
+"SHOW THEM","FINISH IT","WE BELIEVE IN YOU,","GO "
+];
+
+/* ---------- STATE ---------- */
+let entities = [];
+let running=false, paused=false, round=1;
+let messageCount=0;
+
+/* ---------- HELPERS ---------- */
+const rand = a => a[Math.floor(Math.random()*a.length)];
+const color = () => `hsl(${Math.random()*360},75%,62%)`;
+
+function logChat(entity, text, colorOverride=null){
+  const line = document.createElement("div");
+  line.className = "chat-line";
+  const name = `<span class="name" style="color:${colorOverride||entity.color}">${entity.name}</span>`;
+  line.innerHTML = `${name} <span style="color:var(--muted);font-size:12px">•</span> ${text}`;
+  chat.appendChild(line);
+  chat.scrollTop = chat.scrollHeight;
+  messageCount++;
+  chatCount.textContent = messageCount + (messageCount === 1 ? " message" : " messages");
+}
+
+function chooseType(){
+  const r=Math.random()*100;
+  const rock=+rockInput.value;
+  const paper=+paperInput.value;
+  // scissors input exists, so third is remaining
+  return r<rock?"rock":r<rock+paper?"paper":"scissors";
+}
+
+function spawnOne(){
+  const x=Math.random()*canvas.width;
+  const y=Math.random()*canvas.height;
+  const type=chooseType();
+  const name=Math.random().toString(36).slice(2,7);
+  const c=color();
+
+  const entity = {
+    x,y,type,lastType:type,name,color:c,
+    speed:0.15+Math.random()*0.22,
+    alive:true,kills:0,
+    deathX:x, deathY:y
+  };
+
+  logChat(entity, `${type} spawned at (${x|0}, ${y|0})`);
+  entities.push(entity);
+}
+
+/* ---------- SIMULATION ---------- */
+function start(){
+  entities=[];
+  chat.textContent="";
+  leaderboard.textContent="";
+  messageCount=0;
+  chatCount.textContent = "0 messages";
+  round=1;
+  roundLabel.textContent = round;
+  running=true;
+  paused=false;
+  nextBtn.hidden=true;
+  runAgainBtn.hidden=true;
+
+  const count=+peopleInput.value;
+  statusEl.textContent=`Round ${round} — spawning ${count}`;
+
+  // spawn smoothly over 1.5s (capped)
+  const spawnDuration = Math.min(2000, Math.max(500, 1200));
+  const delay = spawnDuration / Math.max(1,count);
+  for(let i=0;i<count;i++){
+    setTimeout(spawnOne,i*delay);
+  }
+  setTimeout(()=>{ step(); }, Math.min(700, spawnDuration));
+}
+
+function update(){
+  for(const e of entities){
+    if(!e.alive) continue;
+
+    // Trash talk: occasional short messages
+    if(Math.random()<0.004){
+      logChat(e, rand(TRASH));
+    }
+
+    // Move towards weakest target (the type this entity kills)
+    let target=null, best=1e9;
+    for(const o of entities){
+      if(!o.alive || KILLS[e.type] !== o.type) continue;
+      const d=Math.hypot(e.x-o.x,e.y-o.y);
+      if(d<best){best=d;target=o;}
+    }
+
+    if(target){
+      const dx=target.x-e.x, dy=target.y-e.y;
+      const len=Math.hypot(dx,dy)||1;
+      e.x+=(dx/len)*e.speed;
+      e.y+=(dy/len)*e.speed;
+
+      if(best<6){
+        target.alive=false;
+        target.lastType=target.type;
+        target.deathX=target.x;
+        target.deathY=target.y;
+        e.kills++;
+
+        logChat(e, `eliminated ${target.name}`, "#ffb4b4");
+
+        // occasional taunt from the eliminated one (keeps the chat lively)
+        const tcount = 1 + Math.floor(Math.random()*3);
+        for(let i=0;i<tcount;i++){
+          setTimeout(()=>{
+            logChat(target, `${rand(CHEERS)} (${target.lastType.toUpperCase()})`, "#8a94a6");
+          }, 1200 + Math.random()*3200);
+        }
+      }
+    } else {
+      // roam randomly if no target
+      e.x += (Math.random()-0.5)*0.8*e.speed;
+      e.y += (Math.random()-0.5)*0.8*e.speed;
+      // keep inside canvas bounds
+      e.x = Math.max(6, Math.min(canvas.width-6, e.x));
+      e.y = Math.max(6, Math.min(canvas.height-6, e.y));
+    }
+  }
+}
+
+function draw(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  // subtle arena vignette
+  ctx.save();
+  const g = ctx.createLinearGradient(0,0,0,canvas.height);
+  g.addColorStop(0, 'rgba(255,255,255,0.02)');
+  g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.restore();
+
+  for(const e of entities){
+    if(!e.alive) continue;
+    // halo
+    ctx.beginPath();
+    ctx.fillStyle = e.color.replace('hsl','hsla').replace(')',',0.12)');
+    ctx.arc(e.x, e.y-6, 14, 0, Math.PI*2);
+    ctx.fill();
+
+    // emoji
+    ctx.font="20px serif";
+    ctx.textAlign="center";
+    ctx.fillStyle="#ffffff";
+    ctx.fillText(EMOJI[e.type], e.x, e.y);
+
+    // name tag
+    ctx.font="11px monospace";
+    ctx.textAlign="center";
+    ctx.fillStyle="rgba(255,255,255,0.9)";
+    ctx.fillText(e.name, e.x, e.y+22);
+
+    // kills display
+    if(e.kills>0){
+      ctx.fillStyle = "rgba(255,210,100,0.95)";
+      ctx.font = "10px monospace";
+      ctx.fillText("✦ "+e.kills, e.x+18, e.y-10);
+    }
+  }
+}
+
+function step(){
+  if(!running || paused) return;
+  update();
+  draw();
+
+  const alive = entities.filter(e=>e.alive);
+  const types = new Set(alive.map(e=>e.type));
+
+  if(types.size <= 1){
+    paused=true;
+    // leaderboard: top 10
+    const sorted = [...entities].sort((a,b)=>b.kills-a.kills).slice(0,10);
+    leaderboard.textContent = "Kills\n-----\n" + sorted.map(p=>`${p.name}: ${p.kills}`).join("\n");
+
+    if(alive.length === 1){
+      statusEl.textContent = `🏆 WINNER: ${alive[0].name} (${alive[0].type.toUpperCase()})`;
+      runAgainBtn.hidden=false;
+    } else {
+      statusEl.textContent = `Round ${round} complete`;
+      nextBtn.hidden=false;
+    }
+    return;
+  }
+
+  // pacing of the animation
+  requestAnimationFrame(step);
+}
+
+function nextRound(){
+  // survivors continue, respawn positions, reassign types by chosen percentages
+  entities = entities.filter(e=>e.alive).map(e=>({
+    ...e,
+    x: Math.random()*canvas.width,
+    y: Math.random()*canvas.height,
+    type: chooseType(),
+    lastType: null,
+    alive: true
+  }));
+  round++;
+  roundLabel.textContent = round;
+  paused=false;
+  leaderboard.textContent="";
+  statusEl.textContent = `Round ${round}`;
+  nextBtn.hidden=true;
+  step();
+}
+
+/* ---------- EVENTS ---------- */
+runBtn.onclick = start;
+nextBtn.onclick = nextRound;
+runAgainBtn.onclick = start;
+
+// Small UX: update status live when percentages change and keep them numeric
+[rockInput,paperInput,scissorsInput].forEach(inp=>{
+  inp.addEventListener('input', ()=>{
+    statusEl.textContent = `Mix: ${rockInput.value}% rock / ${paperInput.value}% paper / ${scissorsInput.value}% scissors`;
+  });
+});
+
+</script>
+
+</body>
+</html>
+```
