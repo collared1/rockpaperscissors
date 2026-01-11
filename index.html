@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>RPS Battle Royale</title>
+<style>
+body {
+  background:#111;
+  color:#eee;
+  font-family:system-ui,monospace;
+  text-align:center;
+}
+canvas {
+  background:#000;
+  border:1px solid #444;
+  display:block;
+  margin:10px auto;
+}
+#ui {
+  display:flex;
+  justify-content:center;
+  gap:12px;
+}
+#chat {
+  width:360px;
+  height:260px;
+  background:#000;
+  border:1px solid #444;
+  overflow-y:auto;
+  padding:6px;
+  font-size:12px;
+  text-align:left;
+}
+#leaderboard {
+  white-space:pre;
+  font-size:12px;
+}
+button { margin:4px; }
+input { width:80px; }
+</style>
+</head>
+<body>
+
+<h2>Rock Paper Scissors Battle Royale</h2>
+
+People <input id="people" type="number" value="50"><br><br>
+Rock % <input id="rock" value="34">
+Paper % <input id="paper" value="33">
+Scissors % <input id="scissors" value="33"><br><br>
+
+<button id="runBtn">Run</button>
+<button id="nextBtn" hidden>Next Round</button>
+<button id="runAgainBtn" hidden>Run Again</button>
+
+<p id="status"></p>
+
+<div id="ui">
+<canvas id="c" width="900" height="600"></canvas>
+<div>
+  <div id="chat"></div>
+  <div id="leaderboard"></div>
+</div>
+</div>
+
+<script>
+/* ---------- DOM ---------- */
+const canvas = document.getElementById("c");
+const ctx = canvas.getContext("2d");
+const chat = document.getElementById("chat");
+const leaderboard = document.getElementById("leaderboard");
+const statusEl = document.getElementById("status");
+
+const peopleInput = document.getElementById("people");
+const rockInput = document.getElementById("rock");
+const paperInput = document.getElementById("paper");
+
+const runBtn = document.getElementById("runBtn");
+const nextBtn = document.getElementById("nextBtn");
+const runAgainBtn = document.getElementById("runAgainBtn");
+
+/* ---------- CONSTANTS ---------- */
+const EMOJI = { rock:"🪨", paper:"📄", scissors:"✂️" };
+const KILLS = { rock:"scissors", scissors:"paper", paper:"rock" };
+
+const TRASH = [
+"EZ","TOO SLOW","FREE","SKILL ISSUE","OUTPLAYED",
+"READ YOU","GG","WHO NEXT","PANIC","MISPLAY",
+"NOT EVEN CLOSE","CLIPPED","PATHETIC","CALCULATED",
+"UNLUCKY","WELCOME","COOKED","OUTDATED META",
+"SPEEDRUN","DIFF","BRO WHY","OVERESTIMATED",
+"ALL PART OF PLAN","BAD MATCHUP","TOO PREDICTABLE"
+];
+
+const CHEERS = [
+"YOU GOT THIS","SWEEP THEM","REVENGE",
+"RPS FOREVER","CLUTCH","WIN THIS",
+"SHOW THEM","FINISH IT","WE BELIEVE","GO TEAM"
+];
+
+/* ---------- STATE ---------- */
+let entities = [];
+let running=false, paused=false, round=1;
+
+/* ---------- HELPERS ---------- */
+const rand = a => a[Math.floor(Math.random()*a.length)];
+const color = () => `hsl(${Math.random()*360},80%,65%)`;
+
+function logChat(entity, text, colorOverride=null){
+  const line = document.createElement("div");
+  line.innerHTML =
+    `<span style="color:${colorOverride||entity.color}">${entity.name}</span>: ${text}`;
+  chat.appendChild(line);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function chooseType(){
+  const r=Math.random()*100;
+  const rock=+rockInput.value;
+  const paper=+paperInput.value;
+  return r<rock?"rock":r<rock+paper?"paper":"scissors";
+}
+
+function spawnOne(){
+  // Spawn message first, then create entity on canvas
+  const x=Math.random()*canvas.width;
+  const y=Math.random()*canvas.height;
+  const type=chooseType();
+  const name=Math.random().toString(36).slice(2,7);
+  const c=color();
+
+  const entity = {
+    x,y,type,lastType:type,name,color:c,
+    speed:0.15+Math.random()*0.2,
+    alive:true,kills:0,
+    deathX:x, deathY:y
+  };
+
+  logChat(entity, `${type}, (${x|0}, ${y|0})`);
+  entities.push(entity); // appears on canvas immediately after chat
+}
+
+function start(){
+  entities=[];
+  chat.textContent="";
+  leaderboard.textContent="";
+  round=1;
+  running=true;
+  paused=false;
+  nextBtn.hidden=true;
+  runAgainBtn.hidden=true;
+
+  const count=+peopleInput.value;
+  statusEl.textContent=`Round 1 — spawning ${count}`;
+
+  const delay = 5000/count;
+  for(let i=0;i<count;i++){
+    setTimeout(spawnOne,i*delay);
+  }
+  setTimeout(step,5000);
+}
+
+function update(){
+  for(const e of entities){
+    if(!e.alive) continue;
+
+    // Trash talk
+    if(Math.random()<0.002){
+      logChat(e, rand(TRASH));
+    }
+
+    // Move towards weakest target
+    let target=null, best=1e9;
+    for(const o of entities){
+      if(!o.alive||KILLS[e.type]!==o.type) continue;
+      const d=Math.hypot(e.x-o.x,e.y-o.y);
+      if(d<best){best=d;target=o;}
+    }
+
+    if(target){
+      const dx=target.x-e.x, dy=target.y-e.y;
+      const len=Math.hypot(dx,dy)||1;
+      e.x+=(dx/len)*e.speed;
+      e.y+=(dy/len)*e.speed;
+
+      if(best<6){
+        target.alive=false;
+        target.lastType=target.type;
+        target.deathX=target.x;
+        target.deathY=target.y;
+        e.kills++;
+
+        logChat(e, `eliminated ${target.name}`, "#ff5555");
+
+        // Dead player cheering
+        setInterval(()=>{
+          if(!target.alive){
+            logChat(target, `${rand(CHEERS)} (${target.lastType.toUpperCase()})`, "#888");
+          }
+        },4000+Math.random()*4000);
+      }
+    }
+  }
+}
+
+function draw(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  for(const e of entities){
+    if(!e.alive) continue;
+    ctx.font="14px serif";
+    ctx.fillStyle="#fff";
+    ctx.fillText(EMOJI[e.type],e.x,e.y);
+    ctx.font="10px monospace";
+    ctx.fillText(e.name,e.x-12,e.y-14);
+  }
+}
+
+function step(){
+  if(!running||paused) return;
+  update();
+  draw();
+
+  const alive=entities.filter(e=>e.alive);
+  const types=new Set(alive.map(e=>e.type));
+
+  if(types.size<=1){
+    paused=true;
+    const sorted=[...entities].sort((a,b)=>b.kills-a.kills).slice(0,10);
+    leaderboard.textContent="Kills\n-----\n"+sorted.map(p=>`${p.name}: ${p.kills}`).join("\n");
+
+    if(alive.length===1){
+      statusEl.textContent=`🏆 WINNER: ${alive[0].name}`;
+      runAgainBtn.hidden=false;
+    }else{
+      statusEl.textContent=`Round ${round} complete`;
+      nextBtn.hidden=false;
+    }
+    return;
+  }
+  requestAnimationFrame(step);
+}
+
+function nextRound(){
+  entities=entities.filter(e=>e.alive).map(e=>({
+    ...e,
+    x:Math.random()*canvas.width,
+    y:Math.random()*canvas.height,
+    type:chooseType(),
+    alive:true
+  }));
+  round++;
+  paused=false;
+  leaderboard.textContent="";
+  statusEl.textContent=`Round ${round}`;
+  step();
+}
+
+/* ---------- EVENTS ---------- */
+runBtn.onclick=start;
+nextBtn.onclick=nextRound;
+runAgainBtn.onclick=start;
+</script>
+
+</body>
+</html>
+
